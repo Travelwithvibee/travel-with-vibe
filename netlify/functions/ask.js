@@ -1,12 +1,10 @@
 exports.handler = async function(event) {
-  if (event.httpMethod !== "POST") return { statusCode: 405, body: "Method not allowed" };
-
   try {
-    const { types, dests, pax, budget, special } = JSON.parse(event.body);
+    const { types, dests, pax, budget, special } = JSON.parse(event.body || "{}");
 
     const prompt = `Si expert na cestovný ruch. Nájdi 3–4 reálne cestovné kancelárie ktoré zodpovedajú požiadavkám:
-Typ: ${types.length ? types.join(", ") : "neupresňuje"}
-Destinácia: ${dests.length ? dests.join(", ") : "neupresňuje"}
+Typ: ${types && types.length ? types.join(", ") : "neupresňuje"}
+Destinácia: ${dests && dests.length ? dests.join(", ") : "neupresňuje"}
 Osoby: ${pax || "neupresňuje"}
 Rozpočet: ${budget || "neupresňuje"}
 Iné: ${special || "žiadne"}
@@ -28,7 +26,7 @@ Odpovedaj IBA ako JSON pole bez iného textu:
     });
 
     const data = await response.json();
-    
+
     if (!data.content || !data.content[0]) {
       return { statusCode: 500, body: JSON.stringify({ error: JSON.stringify(data) }) };
     }
