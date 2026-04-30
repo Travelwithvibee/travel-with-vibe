@@ -32,3 +32,103 @@
   .tag { font-size: 12px; padding: 3px 10px; border-radius: 6px; background: #f0f0f0; color: #666; }
   .card-url { font-size: 12px; color: #1a6ef5; word-break: break-all; }
   .loading { text-align: center; padding: 2rem 0; color: #888; font-size: 14px; display: none; }
+  .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid #ddd; border-top-color: #1a6ef5; border-radius: 50%; animation: spin 0.7s linear infinite; margin-right: 8px; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .err { font-size: 13px; color: #c0392b; margin-top: 8px; display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Travel <span>with Vibe</span></h1>
+  <p class="sub">Interný nástroj – zadaj požiadavky klienta, AI nájde vhodné cestovné kancelárie</p>
+  <div class="field">
+    <div class="label">Typ zájazdu</div>
+    <div class="chips" id="c-type">
+      <div class="chip" data-val="dobrodružný">Dobrodružný</div>
+      <div class="chip" data-val="kultúrny">Kultúrny</div>
+      <div class="chip" data-val="luxusný">Luxusný</div>
+      <div class="chip" data-val="skupinový">Skupinový</div>
+      <div class="chip" data-val="na mieru">Na mieru</div>
+    </div>
+  </div>
+  <div class="field">
+    <div class="label">Destinácia</div>
+    <div class="chips" id="c-dest">
+      <div class="chip" data-val="Ázia">Ázia</div>
+      <div class="chip" data-val="Latinská Amerika">Latinská Amerika</div>
+      <div class="chip" data-val="Afrika">Afrika</div>
+      <div class="chip" data-val="Európa">Európa</div>
+      <div class="chip" data-val="Oceánia">Oceánia</div>
+      <div class="chip" data-val="Blízky východ">Blízky východ</div>
+    </div>
+  </div>
+  <div class="row2">
+    <div class="field">
+      <div class="label">Počet osôb</div>
+      <select id="f-pax">
+        <option value="">–</option>
+        <option>1–2 osoby</option>
+        <option>3–5 osôb</option>
+        <option>6–10 osôb</option>
+        <option>11–16 osôb</option>
+      </select>
+    </div>
+    <div class="field">
+      <div class="label">Rozpočet / os.</div>
+      <select id="f-budget">
+        <option value="">–</option>
+        <option>do 1 000 €</option>
+        <option>1 000–2 500 €</option>
+        <option>2 500–5 000 €</option>
+        <option>5 000 € +</option>
+      </select>
+    </div>
+  </div>
+  <div class="field">
+    <div class="label">Špeciálne požiadavky</div>
+    <textarea id="f-special" rows="2" placeholder="Napr. malá skupina, vegetariáni, fotografická tour..."></textarea>
+  </div>
+  <button class="btn" onclick="findCK()">Nájsť cestovné kancelárie →</button>
+  <div class="err" id="err">Vyber aspoň typ zájazdu alebo destináciu.</div>
+  <div class="loading" id="loading"><span class="spinner"></span> AI prehľadáva web, chvíľu...</div>
+  <div id="results"></div>
+</div>
+<script>
+document.querySelectorAll(".chip").forEach(c => {
+  c.addEventListener("click", function() { this.classList.toggle("on"); });
+});
+function getChips(id) {
+  return Array.from(document.querySelectorAll(`#${id} .chip.on`)).map(c => c.dataset.val);
+}
+async function findCK() {
+  const types = getChips("c-type");
+  const dests = getChips("c-dest");
+  const pax = document.getElementById("f-pax").value;
+  const budget = document.getElementById("f-budget").value;
+  const special = document.getElementById("f-special").value.trim();
+  const errEl = document.getElementById("err");
+  if (!types.length && !dests.length) { errEl.style.display = "block"; return; }
+  errEl.style.display = "none";
+  document.getElementById("loading").style.display = "block";
+  document.getElementById("results").innerHTML = "";
+  try {
+    const res = await fetch("/.netlify/functions/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ types, dests, pax, budget, special })
+    });
+    const data = await res.json();
+    document.getElementById("loading").style.display = "none";
+    if (!data.results || !data.results.length) {
+      document.getElementById("results").innerHTML = '<p style="color:#888;font-size:14px;margin-top:1rem;">Žiadne výsledky.</p>';
+      return;
+    }
+    document.getElementById("results").innerHTML = `<hr class="divider"><p class="label" style="margin-bottom:12px;">Odporúčané kancelárie</p>${data.results.map(ck=>`<div class="card ${ck.top?'top':''}"><div class="card-head"><span class="card-name">${ck.name}</span>${ck.top?'<span class="badge">Najlepšia voľba</span>':''}</div><p class="card-desc">${ck.desc}</p><div class="tags">${(ck.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('')}</div><a href="${ck.url}" target="_blank" class="card-url">${ck.url}</a></div>`).join('')}`;
+  } catch(e) {
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("results").innerHTML = '<p style="color:#c0392b;font-size:14px;margin-top:1rem;">Niečo sa pokazilo.</p>';
+  }
+}
+</script>
+</body>
+</html>
