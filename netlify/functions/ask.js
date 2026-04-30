@@ -20,6 +20,11 @@ Odpovedaj IBA ako JSON pole bez iného textu:
     });
 
     const data = await response.json();
+    
+    if (!data.candidates) {
+      return { statusCode: 500, body: JSON.stringify({ debug: data }) };
+    }
+
     const text = data.candidates[0].content.parts[0].text;
     const start = text.indexOf("[");
     const end = text.lastIndexOf("]");
